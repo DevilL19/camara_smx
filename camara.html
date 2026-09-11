@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Captura de Evidencia</title>
+  <style>
+    body { background:#1a1a1a; color:white; font-family:'Segoe UI', sans-serif; text-align:center; padding:20px; margin:0; }
+    .cam-box { border: 4px solid #C8102E; border-radius:8px; overflow:hidden; width:100%; max-width:400px; height:300px; margin:0 auto 20px auto; background:#000; }
+    video { width:100%; height:100%; object-fit:cover; transform: scaleX(-1); } /* Modo espejo */
+    .btn { background:#0F9D58; color:white; border:none; padding:15px 30px; font-size:18px; font-weight:bold; border-radius:6px; cursor:pointer; }
+    .btn:disabled { background:#555; cursor:not-allowed; }
+  </style>
+</head>
+<body>
+  <h3 style="font-size: 22px; margin-top: 0;">📸 Captura de Evidencia</h3>
+  <p style="color:#aaa; font-size:15px; margin-bottom: 20px;">Alinea tu rostro, mira a la cámara y haz clic en capturar.</p>
+  
+  <div class="cam-box"><video id="videoElement" autoplay playsinline></video></div>
+  
+  <button id="btn-foto" class="btn" onclick="capturar()">Capturar y Finalizar</button>
+  <canvas id="canvasElement" style="display:none;"></canvas>
+
+  <script>
+    var urlParams = new URLSearchParams(window.location.search);
+    var streamGlobal = null;
+
+    window.onload = async function() {
+      try {
+        streamGlobal = await navigator.mediaDevices.getUserMedia({ video: true });
+        document.getElementById('videoElement').srcObject = streamGlobal;
+      } catch(e) {
+        alert("Error al encender la cámara: " + e.message);
+      }
+    };
+
+    function capturar() {
+      var btn = document.getElementById('btn-foto');
+      btn.innerText = "⏳ Guardando en el servidor...";
+      btn.disabled = true;
+
+      var video = document.getElementById('videoElement');
+      var canvas = document.getElementById('canvasElement');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      
+      // Voltear la imagen en el canvas para que no quede invertida (como espejo)
+      var ctx = canvas.getContext('2d');
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0);
+
+      var base64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+      if(streamGlobal) streamGlobal.getTracks().forEach(t => t.stop());
+
+      var now = new Date();
+      var horaFinTexto = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+
+      var paquete = {
+        idCurso: urlParams.get('idCurso') || 'N/A',
+        curso: urlParams.get('curso') || 'Curso',
+        instructor: urlParams.get('instructor') || 'Instructor',
+        grupo: urlParams.get('grupo') || 'N/A',
+        minutos: urlParams.get('minutos') || 0,
+        fecha: urlParams.get('fecha') || '',
+        horaFin: horaFinTexto,
+        imagenBase64: base64,
+        nombreArchivo: (urlParams.get('fecha')||'').replace(/-/g,'') + "_" + (urlParams.get('instructor')||'').split(" ")[0] + "_" + (urlParams.get('curso')||'').substring(0, 10).replace(/\\s/g, '')
+      };
+
+      var webAppUrl = urlParams.get('webAppUrl');
+
+      // Se envía a Apps Script con redirect "follow" por la arquitectura de Google
+      fetch(webAppUrl, {
+        method: 'POST',
+        redirect: 'follow',
+        body: JSON.stringify(paquete),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if(data.status === "OK") {
+          if(window.opener && !window.opener.closed) { window.opener.cerrarSalaDesdePopup(); }
+          window.close(); // Cierra el popup al terminar
+        } else {
+          alert("Error al guardar: " + data.status);
+          btn.disabled = false;
+          btn.innerText = "Capturar y Finalizar";
+        }
+      })
+      .catch(err => {
+        alert("Error de envío. Revisa tu conexión: " + err.message);
+        btn.disabled = false;
+        btn.innerText = "Capturar y Finalizar";
+      });
+    }
+  </script>
+</body>
+</html>
