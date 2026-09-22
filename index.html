@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Captura de Evidencia - CR7</title>
+  <title>Captura de Evidencia </title>
   <style>
     body { margin:0; padding:20px; background:#111; color:white; font-family:'Segoe UI', sans-serif; text-align:center; }
     h2 { margin-top:0; color:#fff; font-size:20px; }
@@ -17,8 +17,8 @@
   </style>
 </head>
 <body>
-  <h2>📸 Captura de Evidencia CR7</h2>
-  <p>Alinea tu rostro, mira a la cámara y haz clic en capturar.</p>
+  <h2>📸 Captura de Evidencia</h2>
+  <p>Hello Mr. Commander, porfavor mire a la cámara y haga clic en capturar.</p>
   
   <div id="video-container">
     <video id="video" autoplay playsinline></video>
@@ -27,72 +27,62 @@
 
   <button id="btn-capturar" class="btn" onclick="tomarYEnviarFoto()">Dispara y Finaliza</button>
 
+  <!-- Formulario directo para enviar con autenticación de Google -->
+  <form id="uploadForm" method="POST" style="display:none;">
+    <input type="hidden" name="datos" id="datosInput">
+  </form>
+
   <script>
-  const urlParams = new URLSearchParams(window.location.search);
-  const webAppUrl = urlParams.get('webAppUrl');
-  const idCurso = urlParams.get('idCurso') || 'SIN-ID';
-  const curso = urlParams.get('curso') || 'Curso';
-  const instructor = urlParams.get('instructor') || 'Instructor';
-  const grupo = urlParams.get('grupo') || 'GPO';
-  const minutos = urlParams.get('minutos') || '0';
-  const fecha = urlParams.get('fecha') || '';
+    const urlParams = new URLSearchParams(window.location.search);
+    const webAppUrl = urlParams.get('webAppUrl');
+    const idCurso = urlParams.get('idCurso') || 'SIN-ID';
+    const curso = urlParams.get('curso') || 'Curso';
+    const instructor = urlParams.get('instructor') || 'Instructor';
+    const grupo = urlParams.get('grupo') || 'GPO';
+    const minutos = urlParams.get('minutos') || '0';
+    const fecha = urlParams.get('fecha') || '';
 
-  const video = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
-  const btnCapturar = document.getElementById('btn-capturar');
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const btnCapturar = document.getElementById('btn-capturar');
 
-  navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false })
-    .then(stream => { video.srcObject = stream; })
-    .catch(err => { alert("No se pudo acceder a la cámara: " + err.message); });
+    navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false })
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => { alert("No se pudo acceder a la cámara: " + err.message); });
 
-  function tomarYEnviarFoto() {
-    if (!webAppUrl) {
-      alert("Error: No se recibió la dirección del servidor de Google.");
-      return;
-    }
-
-    btnCapturar.disabled = true;
-    btnCapturar.innerText = "⏳ Guardando en el servidor...";
-
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    const base64Image = canvas.toDataURL('image/jpeg', 0.8);
-    const nombreArchivo = "Evidencia_" + idCurso + "_" + fecha.replace(/[/.-]/g, '');
-
-    const paquete = {
-      idCurso: idCurso,
-      curso: curso,
-      instructor: instructor,
-      grupo: grupo,
-      minutos: minutos,
-      fecha: fecha,
-      nombreArchivo: nombreArchivo,
-      imagenBase64: base64Image
-    };
-
-    // Enviar con mode no-cors para evitar el bloqueo de redirección de Google
-    fetch(webAppUrl, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(paquete)
-    })
-    .then(() => {
-      alert("✅ Evidencia enviada correctamente al servidor.");
-      if (window.opener && !window.opener.closed) {
-        try { window.opener.cerrarSalaDesdePopup(); } catch(e){}
+    function tomarYEnviarFoto() {
+      if (!webAppUrl) {
+        alert("Error: No se recibió la dirección del servidor de Google.");
+        return;
       }
-      window.close();
-    })
-    .catch(err => {
-      alert("Error de conexión: " + err.message);
-      btnCapturar.disabled = false;
-      btnCapturar.innerText = "Capturar y Finalizar";
-    });
-  }
-</script>
+
+      btnCapturar.disabled = true;
+      btnCapturar.innerText = "⏳ Guardando en el servidor...";
+
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const base64Image = canvas.toDataURL('image/jpeg', 0.8);
+      const nombreArchivo = "Evidencia_" + idCurso + "_" + fecha.replace(/[/.-]/g, '');
+
+      const paquete = {
+        idCurso: idCurso,
+        curso: curso,
+        instructor: instructor,
+        grupo: grupo,
+        minutos: minutos,
+        fecha: fecha,
+        nombreArchivo: nombreArchivo,
+        imagenBase64: base64Image
+      };
+
+      const form = document.getElementById('uploadForm');
+      form.action = webAppUrl;
+      document.getElementById('datosInput').value = JSON.stringify(paquete);
+      form.submit();
+    }
+  </script>
 </body>
 </html>
