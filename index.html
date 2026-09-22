@@ -28,79 +28,71 @@
   <button id="btn-capturar" class="btn" onclick="tomarYEnviarFoto()">Dispara y Finaliza</button>
 
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const webAppUrl = urlParams.get('webAppUrl');
-    const idCurso = urlParams.get('idCurso') || 'SIN-ID';
-    const curso = urlParams.get('curso') || 'Curso';
-    const instructor = urlParams.get('instructor') || 'Instructor';
-    const grupo = urlParams.get('grupo') || 'GPO';
-    const minutos = urlParams.get('minutos') || '0';
-    const fecha = urlParams.get('fecha') || '';
+  const urlParams = new URLSearchParams(window.location.search);
+  const webAppUrl = urlParams.get('webAppUrl');
+  const idCurso = urlParams.get('idCurso') || 'SIN-ID';
+  const curso = urlParams.get('curso') || 'Curso';
+  const instructor = urlParams.get('instructor') || 'Instructor';
+  const grupo = urlParams.get('grupo') || 'GPO';
+  const minutos = urlParams.get('minutos') || '0';
+  const fecha = urlParams.get('fecha') || '';
 
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const btnCapturar = document.getElementById('btn-capturar');
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const btnCapturar = document.getElementById('btn-capturar');
 
-    // Activar cámara
-    navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false })
-      .then(stream => { video.srcObject = stream; })
-      .catch(err => { alert("No se pudo acceder a la cámara: " + err.message); });
+  navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false })
+    .then(stream => { video.srcObject = stream; })
+    .catch(err => { alert("No se pudo acceder a la cámara: " + err.message); });
 
-    function tomarYEnviarFoto() {
-      if (!webAppUrl) {
-        alert("Error: No se recibió la dirección del servidor de Google.");
-        return;
-      }
-
-      btnCapturar.disabled = true;
-      btnCapturar.innerText = "⏳ Guardando en el servidor...";
-
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      const base64Image = canvas.toDataURL('image/jpeg', 0.8);
-      const nombreArchivo = "Evidencia_" + idCurso + "_" + fecha.replace(/[/.-]/g, '');
-
-      const paquete = {
-        idCurso: idCurso,
-        curso: curso,
-        instructor: instructor,
-        grupo: grupo,
-        minutos: minutos,
-        fecha: fecha,
-        nombreArchivo: nombreArchivo,
-        imagenBase64: base64Image
-      };
-
-      // Petición con Content-Type text/plain para omitir el preflight CORS de Chrome
-      fetch(webAppUrl, {
-        method: 'POST',
-        mode: 'cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(paquete)
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === "OK") {
-          alert("✅ Evidencia resguardada con éxito.");
-          if (window.opener && !window.opener.closed) {
-            try { window.opener.cerrarSalaDesdePopup(); } catch(e){}
-          }
-          window.close();
-        } else {
-          alert("Error en el servidor: " + data.status);
-          btnCapturar.disabled = false;
-          btnCapturar.innerText = "Capturar y Finalizar";
-        }
-      })
-      .catch(err => {
-        alert("Error de envío. Revisa los permisos de implementación en Apps Script: " + err.message);
-        btnCapturar.disabled = false;
-        btnCapturar.innerText = "Capturar y Finalizar";
-      });
+  function tomarYEnviarFoto() {
+    if (!webAppUrl) {
+      alert("Error: No se recibió la dirección del servidor de Google.");
+      return;
     }
-  </script>
+
+    btnCapturar.disabled = true;
+    btnCapturar.innerText = "⏳ Guardando en el servidor...";
+
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const base64Image = canvas.toDataURL('image/jpeg', 0.8);
+    const nombreArchivo = "Evidencia_" + idCurso + "_" + fecha.replace(/[/.-]/g, '');
+
+    const paquete = {
+      idCurso: idCurso,
+      curso: curso,
+      instructor: instructor,
+      grupo: grupo,
+      minutos: minutos,
+      fecha: fecha,
+      nombreArchivo: nombreArchivo,
+      imagenBase64: base64Image
+    };
+
+    // Enviar con mode no-cors para evitar el bloqueo de redirección de Google
+    fetch(webAppUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(paquete)
+    })
+    .then(() => {
+      alert("✅ Evidencia enviada correctamente al servidor.");
+      if (window.opener && !window.opener.closed) {
+        try { window.opener.cerrarSalaDesdePopup(); } catch(e){}
+      }
+      window.close();
+    })
+    .catch(err => {
+      alert("Error de conexión: " + err.message);
+      btnCapturar.disabled = false;
+      btnCapturar.innerText = "Capturar y Finalizar";
+    });
+  }
+</script>
 </body>
 </html>
